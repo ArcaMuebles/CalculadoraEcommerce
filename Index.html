@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="es-CL">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Calculadora de Ganancia Real — MP 3,8% + Shopify 2%</title>
+<style>
+  :root{
+    --bg:#0f172a;--panel:#0b1223;--ink:#e5e7eb;--muted:#9ca3af;--b:#1f2937;
+    --ok:#22c55e;--warn:#eab308;--bad:#ef4444;--neutral:#64748b;--accent:#22d3ee;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:linear-gradient(180deg,var(--bg),#091020);color:var(--ink);
+       font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+  .wrap{max-width:980px;margin:0 auto;padding:20px}
+  h1{margin:0 0 10px 0;font-size:20px}
+  .card{background:var(--panel);border:1px solid var(--b);border-radius:14px;padding:14px}
+  label{font-size:12px;color:var(--muted)} input,select{width:100%;padding:10px;border-radius:10px;border:1px solid var(--b);background:#071329;color:#fff}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .kpi{background:#071329;border:1px solid var(--b);padding:14px;border-radius:12px;margin-top:12px}
+  .kpi .v{font-size:26px;font-weight:800}
+  .pill{display:inline-block;background:#081226;border:1px solid var(--b);border-radius:10px;padding:6px 10px;margin:6px 6px 0 0}
+  .flex{display:flex;gap:10px;align-items:center;justify-content:space-between}
+  .dot{width:10px;height:10px;border-radius:50%} .g{background:var(--ok)} .y{background:var(--warn)} .r{background:var(--bad)} .n{background:var(--neutral)}
+  .btn{background:var(--accent);color:#002b32;border:none;border-radius:10px;padding:8px 12px;font-weight:800;cursor:pointer}
+  .muted{color:var(--muted);font-size:12px}
+  .mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+  details{background:#071329;border:1px solid var(--b);border-radius:12px;padding:12px;margin-top:12px}
+  summary{cursor:pointer;color:#cbd5e1}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Calculadora de Ganancia Real — 🇨🇱 MP 3,8% + Shopify 2%</h1>
+
+  <div id="app" class="card">
+    <div class="row">
+      <div>
+        <label>Nombre de producto</label>
+        <input id="producto" type="text" placeholder="Comoda Aval 9 cajones"/>
+      </div>
+      <div>
+        <label>Unidades</label>
+        <input id="unidades" type="number" min="1" step="1" value="1"/>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:8px">
+      <div>
+        <label>Ingreso costo taller</label>
+        <div class="row">
+          <input id="costo" type="text" inputmode="numeric" placeholder="140000"/>
+          <select id="costoTieneIVA">
+            <option value="no">Sin IVA</option>
+            <option value="si">Con IVA (19%)</option>
+          </select>
+        </div>
+        <div class="muted">Costo considerado por unidad: <span id="costoConsideradoHint" class="mono">$ 0</span></div>
+      </div>
+      <div>
+        <label>Ingreso valor de venta (con IVA)</label>
+        <input id="precio" type="text" inputmode="numeric" placeholder="239990"/>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:8px">
+      <div>
+        <label>IVA de venta</label>
+        <select id="ivaMode">
+          <option value="auto">Auto 19% incluido en precio</option>
+          <option value="manual">Manual (CLP)</option>
+        </select>
+      </div>
+      <div>
+        <label id="lblIva">IVA venta (CLP)</label>
+        <input id="ivaVenta" type="text" inputmode="numeric" placeholder="(auto)"/>
+        <div class="muted">Sugerido 19% incluido: <span id="ivaSugerido" class="mono">$ 0</span></div>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:8px">
+      <div>
+        <label>Dinero depositado por Mercado Pago (opcional)</label>
+        <input id="depositoMP" type="text" inputmode="numeric" placeholder="230870"/>
+        <div class="muted">Si lo llenas, <strong>no</strong> se descuenta de nuevo la comisión MP.</div>
+      </div>
+      <div>
+        <label>Comisión Shopify (% o CLP)</label>
+        <input id="shopifyCLP" type="text" inputmode="numeric" placeholder="(auto 2% o escribe 2%)"/>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:8px">
+      <div>
+        <label>Comisión MP (% o CLP)</label>
+        <input id="mpCLP" type="text" inputmode="numeric" placeholder="(auto 3,8% o escribe 3,8%)"/>
+      </div>
+      <div>
+        <label>Costos adicionales (CLP)</label>
+        <div class="row">
+          <input id="costoEnvio" type="text" inputmode="numeric" placeholder="Envio"/>
+          <input id="costoEmbalaje" type="text" inputmode="numeric" placeholder="Embalaje"/>
+        </div>
+        <div class="row" style="margin-top:6px">
+          <input id="costoGarantia" type="text" inputmode="numeric" placeholder="Garantia / Otros"/>
+          <input id="costoExtra" type="text" inputmode="numeric" placeholder="Otro costo"/>
+        </div>
+      </div>
+    </div>
+
+    <div class="kpi">
+      <div class="flex">
+        <div>
+          <div class="muted">Ganancia real</div>
+          <div id="ganancia" class="v mono">$ 0</div>
+          <small class="muted">Por unidad: <span id="gananciaUnit" class="mono">$ 0</span></small>
+        </div>
+        <div class="flex" style="gap:8px">
+          <span class="dot g" id="dot"></span>
+          <small id="semTxt" class="muted">EXCELENTE</small>
+        </div>
+      </div>
+      <div class="muted" style="margin-top:6px">Margen: <strong id="margenPct" class="mono">0%</strong> · Rangos: <span class="mono">≥30% Excelente</span> · <span class="mono">25–30% Regular</span> · <span class="mono">15–25% Normal</span> · <span class="mono"><15% Malo</span></div>
+    </div>
+
+    <div class="row" style="margin-top:6px">
+      <span class="pill">Total cobrado (bruto): <strong id="totalCobrado" class="mono">$ 0</strong></span>
+      <span class="pill">IVA venta: <strong id="ivaOut" class="mono">$ 0</strong></span>
+    </div>
+    <div class="row">
+      <span class="pill">Comisión MP: <strong id="mpOut" class="mono">$ 0</strong></span>
+      <span class="pill">Comisión Shopify: <strong id="shopOut" class="mono">$ 0</strong></span>
+    </div>
+    <div class="row">
+      <span class="pill">Costos adicionales: <strong id="costosAdicOut" class="mono">$ 0</strong></span>
+      <span class="pill">Precio break-even con IVA: <strong id="breakeven" class="mono">$ 0</strong></span>
+    </div>
+
+    <details>
+      <summary>Ver detalle paso a paso</summary>
+      <pre id="pasoAPaso" class="mono" style="white-space:pre-wrap;margin:8px 0 0 0"></pre>
+    </details>
+
+    <div style="display:flex;justify-content:flex-end;margin-top:10px">
+      <button id="btnReset" class="btn" type="button">Reestablecer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const $=id=>document.getElementById(id);
+  const CLP=new Intl.NumberFormat('es-CL',{style:'currency',currency:'CLP',maximumFractionDigits:0});
+  const fmt=v=>CLP.format(Math.round(v||0));
+  const parseCLP=v=>{ if(v==null) return 0; return parseInt(String(v).replace(/[^0-9-]/g,''),10)||0 };
+
+  function readCommission(raw, price, defaultPct){
+    if(raw==null) raw='';
+    const txt=String(raw).trim();
+    if(txt===''){ // default
+      return Math.round(price*defaultPct);
+    }
+    // ¿viene con % explícito?
+    if(/[0-9]+([\\.,][0-9]+)?\\s*%/.test(txt)){
+      const pct=parseFloat(txt.replace(',','.').replace(/[^0-9.]/g,''))||0;
+      return Math.round(price*pct/100);
+    }
+    // ¿parece porcentaje (número pequeño <= 100 y corto)?
+    const maybePct=parseFloat(txt.replace(',','.').replace(/[^0-9.]/g,''));
+    if(!isNaN(maybePct) && maybePct>=0 && maybePct<=100 && txt.length<=5){
+      return Math.round(price*maybePct/100);
+    }
+    // si no, interpretamos CLP
+    return parseCLP(txt);
+  }
+
+  function compute(){
+    const u = Math.max(1, parseInt(($('unidades').value||'1'),10));
+    const precio = parseCLP($('precio').value);
+    const costoBase = parseCLP($('costo').value);
+    const costoPU = ($('costoTieneIVA').value==='si') ? Math.round(costoBase*1.19) : costoBase;
+    $('costoConsideradoHint').textContent = fmt(costoPU);
+
+    const ivaAuto = precio - Math.round(precio/1.19);
+    const useManual = $('ivaMode').value==='manual';
+    const ivaManual = parseCLP($('ivaVenta').value);
+    const ivaPU = useManual ? ivaManual : ivaAuto;
+
+    const dep = parseCLP($('depositoMP').value);
+    // MP: si el usuario escribe algo, puede ser % o CLP; si deja vacío y hay depósito, usar diferencia; si ambos vacíos, 3,8%
+    const mpRaw = $('mpCLP').value;
+    let mpPU;
+    if(String(mpRaw).trim()!==''){
+      mpPU = readCommission(mpRaw, precio, 0.038);
+    }else{
+      mpPU = dep>0 ? Math.max(0, precio-dep) : Math.round(precio*0.038);
+    }
+    const shopRaw = $('shopifyCLP').value;
+    const shopPU = readCommission(shopRaw, precio, 0.02);
+
+    const costosAdicPU = parseCLP($('costoEnvio').value)+parseCLP($('costoEmbalaje').value)+parseCLP($('costoGarantia').value)+parseCLP($('costoExtra').value);
+
+    const total = precio * u;
+    const ivaTotal = ivaPU * u;
+    const mpTotal = mpPU * u;
+    const shopTotal = shopPU * u;
+    const costoTotal = costoPU * u;
+    const costosAdicTotal = costosAdicPU * u;
+
+    const gan = total - ivaTotal - mpTotal - shopTotal - costoTotal - costosAdicTotal;
+    const ganUnit = gan/u;
+    const netoSinIVA = total - ivaTotal;
+    const margen = netoSinIVA>0 ? (gan/netoSinIVA) : 0;
+
+    const mpPct=0.038, shopPct=0.02;
+    let pBreak=0;
+    if(useManual){
+      const denom = 1 - (mpPct + shopPct);
+      pBreak = denom>0 ? (costoPU + costosAdicPU + ivaPU)/denom : 0;
+    }else{
+      const ivaFrac = 0.19/1.19;
+      const denom = 1 - (ivaFrac + mpPct + shopPct);
+      pBreak = denom>0 ? (costoPU + costosAdicPU)/denom : 0;
+    }
+
+    return {u, precio, ivaPU, ivaTotal, mpPU, mpTotal, shopPU, shopTotal, costoPU, costoTotal, costosAdicPU, costosAdicTotal, gan, ganUnit, margen, pBreak};
+  }
+
+  function paint(){
+    const r = compute();
+    $('ivaSugerido').textContent = fmt(r.ivaPU);
+    $('totalCobrado').textContent = fmt(r.precio*r.u);
+    $('ivaOut').textContent = fmt(r.ivaTotal);
+    $('mpOut').textContent = fmt(r.mpTotal);
+    $('shopOut').textContent = fmt(r.shopTotal);
+    $('costosAdicOut').textContent = fmt(r.costosAdicTotal);
+    $('ganancia').textContent = fmt(r.gan);
+    $('gananciaUnit').textContent = fmt(r.ganUnit);
+    $('margenPct').textContent = (r.margen*100).toFixed(1)+'%';
+    $('breakeven').textContent = fmt(r.pBreak);
+
+    const dot=$('dot'), txt=$('semTxt'); dot.classList.remove('g','y','r','n');
+    const m=r.margen*100;
+    if(m>=30){ dot.classList.add('g'); txt.textContent='EXCELENTE'; }
+    else if(m>=25){ dot.classList.add('y'); txt.textContent='REGULAR'; }
+    else if(m>=15){ dot.classList.add('n'); txt.textContent='NORMAL'; }
+    else { dot.classList.add('r'); txt.textContent='MALO'; }
+
+    const lines=[
+      `Precio con IVA (unidad): ${fmt(r.precio)}`,
+      `- IVA venta: ${fmt(r.ivaPU)}`,
+      `- Comisión MP: ${fmt(r.mpPU)}`,
+      `- Comisión Shopify: ${fmt(r.shopPU)}`,
+      `- Costo taller (considerado): ${fmt(r.costoPU)}`,
+      `- Costos adicionales: ${fmt(r.costosAdicPU)}`,
+      `———————————————`,
+      `Ganancia por unidad: ${fmt(r.ganUnit)}`,
+      `Ganancia total (${r.u} u): ${fmt(r.gan)}`
+    ];
+    $('pasoAPaso').textContent = lines.join('\\n');
+  }
+
+  const app=document.getElementById('app');
+  ['input','change','keyup','paste'].forEach(ev=> app.addEventListener(ev, paint));
+  $('ivaMode').addEventListener('change',()=>{ $('ivaVenta').disabled = $('ivaMode').value!=='manual'; });
+  $('btnReset').addEventListener('click',()=>{
+    ['producto','costo','precio','ivaVenta','depositoMP','shopifyCLP','mpCLP','costoEnvio','costoEmbalaje','costoGarantia','costoExtra'].forEach(id=> { const el=$(id); if(el) el.value=''; });
+    $('unidades').value='1'; $('ivaMode').value='auto'; $('costoTieneIVA').value='no'; $('ivaVenta').disabled=true; paint();
+  });
+
+  paint();
+})();
+</script>
+</body>
+</html>
